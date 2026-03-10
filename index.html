@@ -252,7 +252,7 @@
     <button class="nav-btn" onclick="nav('arch')">Architecture</button>
     <div class="topbar-right">
       <span class="ai-pill">✦ Claude AI</span>
-      <span style="font-size:12px;color:var(--muted)">support@bexelindia.com</span>
+      <span style="font-size:12px;color:var(--muted)"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="bccfc9ccccd3cec8fcded9c4d9d0d5d2d8d5dd92dfd3d1">[email&#160;protected]</a></span>
     </div>
   </div>
 
@@ -339,7 +339,7 @@
         <div class="arch-card" style="border:1px solid #38BDF825">
           <div class="ac-title" style="color:var(--accent)">📧 1. Email Ingestion — Microsoft 365</div>
           <ul>
-            <li>Emails to support@bexelindia.com trigger Power Automate</li>
+            <li>Emails to <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="e4979194948b9690a486819c81888d8a808d85ca878b89">[email&#160;protected]</a> trigger Power Automate</li>
             <li>Flow auto-creates ticket in SharePoint List</li>
             <li>Auto-acknowledgement sent to client immediately</li>
             <li>Email thread ID stored for reply threading</li>
@@ -427,7 +427,7 @@
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 // ═══════════════════════════════════════════════════════════════════
 // DATA — replace with SharePoint REST API calls in production
 // ═══════════════════════════════════════════════════════════════════
@@ -604,15 +604,20 @@ function renderDetail() {
       <div class="ai-panel">
         <div class="ai-panel-title">🤖 AI Actions <span class="ai-pill">✦ Claude</span></div>
         <div class="ai-actions">
-          <button class="btn btn-ai" onclick="aiAction('summarise')">✦ Summarise Ticket</button>
-          <button class="btn btn-ai" onclick="aiAction('suggest')">💡 Suggest Solution</button>
+          <button class="btn btn-ai" style="background:#A78BFA18;color:#A78BFA;border-color:#A78BFA30;font-size:13px;padding:10px 14px" onclick="aiAction('full')">✦ Full AI Analysis</button>
+          <button class="btn btn-ai" onclick="aiAction('summarise')">📋 Summarise Only</button>
           <button class="btn btn-green" onclick="aiAction('reply')">✉️ Draft Client Reply</button>
           <button class="btn btn-red" onclick="escalate('${t.id}')">🔺 Escalate to Dev Team</button>
         </div>
+        <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+          <span style="font-size:10px;background:#34D39915;color:#34D399;border:1px solid #34D39930;border-radius:4px;padding:2px 7px;font-weight:600">📖 Help Centre</span>
+          <span style="font-size:10px;background:#F8717115;color:#F87171;border:1px solid #F8717130;border-radius:4px;padding:2px 7px;font-weight:600">🎥 YouTube</span>
+          <span style="font-size:10px;background:#38BDF815;color:#38BDF8;border:1px solid #38BDF830;border-radius:4px;padding:2px 7px;font-weight:600">🧠 Knowledge Base</span>
+        </div>
         <div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">AI Response</div>
-        <div class="ai-output ${aiOutput?"has-content":""}" id="ai-out">${aiOutput||"Click an action above to get AI assistance."}</div>
+        <div class="ai-output ${aiOutput?"has-content":""}" id="ai-out" style="white-space:pre-wrap">${aiOutput||"Click 'Full AI Analysis' to get Help Centre articles, YouTube tutorials, past ticket matches and a drafted reply — all in one click."}</div>
         <div id="ai-spinner" style="display:none;margin-top:8px">
-          <span class="thinking" style="font-size:13px">⟳ Claude is thinking…</span>
+          <span class="thinking" style="font-size:13px">⟳ Claude is searching Help Centre, YouTube & Knowledge Base…</span>
         </div>
       </div>
     </div>
@@ -671,13 +676,93 @@ async function aiAction(type) {
   if(!t) return;
   let prompt="", system="";
 
-  if(type==="summarise") {
-    prompt=`Summarise this support ticket in 2 concise sentences. Focus on the root cause and current status.\n\nClient: ${t.client}\nSubject: ${t.subject}\nCategory: ${t.category}\nPriority: ${t.priority}\nStatus: ${t.status}\nMessages: ${t.msgs}`;
-  } else if(type==="suggest") {
-    prompt=`You are a Bexel Manager support expert. Suggest a resolution for this ticket.\n\nSubject: ${t.subject}\nCategory: ${t.category}\nPriority: ${t.priority}\nExisting summary: ${t.aiSummary||"None"}\n\nProvide:\n1) Likely root cause\n2) Immediate fix steps\n3) Long-term prevention\n\nBe specific and under 150 words.`;
+  const kbEntries = tickets
+    .filter(x=>x.solution && x.id!==t.id)
+    .slice(0,10)
+    .map(x=>`[${x.id}] ${x.subject} → ${x.solution}`)
+    .join("\n") || "No resolved tickets yet.";
+
+  const BEXEL_SYSTEM = `You are an expert Bexel Manager support analyst for Bexel India's support team. 
+Your job is to help first responders handle client tickets quickly and accurately.
+You have deep knowledge of Bexel Manager software including: Model data management, Clash detection, Quantity takeoff, Cost management, Schedule, Progress monitoring, 4D/5D BIM, Reporting, BEXEL CDE, BEXEL TeamWorks, BEXEL Viewer, BEXEL FM.
+The help centre is at https://help.bexelmanager.com and tutorials are at https://www.youtube.com/@bexelconsulting
+Always be specific, practical and concise.`;
+
+  if(type==="full") {
+    system = BEXEL_SYSTEM;
+    prompt = `Analyse this Bexel Manager support ticket and provide a complete first responder briefing.
+
+TICKET DETAILS:
+Client: ${t.client}
+Subject: ${t.subject}
+Category: ${t.category}
+Priority: ${t.priority}
+Status: ${t.status}
+
+PAST RESOLVED TICKETS (Knowledge Base):
+${kbEntries}
+
+Respond in EXACTLY this format:
+
+🎫 TICKET SUMMARY
+[2 sentences: what the client's problem is and urgency level]
+
+📊 SUGGESTED PRIORITY: [Critical / High / Medium / Low]
+Reason: [one line]
+
+📂 CATEGORY: [Bug / Feature / Performance / Integration / Training / Other]
+
+---
+📖 HELP CENTRE (help.bexelmanager.com)
+[Search your knowledge of help.bexelmanager.com for the most relevant article]
+Article: [title of most relevant article]
+Summary: [2 lines on what it covers and how it helps]
+Link: https://help.bexelmanager.com/support/help-center/[most-relevant-section]/
+
+---
+🎥 YOUTUBE TUTORIAL (youtube.com/@bexelconsulting)
+[Find the most relevant tutorial from the Bexel Consulting YouTube channel]
+Video: [title of most relevant video]
+Covers: [what part is relevant to this ticket]
+Link: https://www.youtube.com/@bexelconsulting
+Note: [timestamp or specific section to watch if known]
+
+---
+🧠 KNOWLEDGE BASE CHECK
+[Check the past resolved tickets above for similar issues]
+[If found]: Past ticket [TKT-XXX] had similar issue — resolved by: [solution]
+[If not found]: No matching past ticket. This appears to be a new issue.
+
+---
+✉️ SUGGESTED CLIENT REPLY
+Subject: RE: [${t.id}] ${t.subject}
+
+Dear ${t.client} Team,
+
+[2-3 sentences: acknowledge the issue, confirm it is being investigated, give timeframe based on priority]
+
+[If help article relevant]: You may find this resource helpful while we investigate: [link]
+[If video relevant]: This tutorial may also assist: [link]
+
+We will update you shortly.
+
+Best regards,
+Bexel India Support Team
+support@bexelindia.com
+
+---
+⚡ FIRST RESPONDER — DO THIS NOW
+1. [Most immediate action step]
+2. [Second step]
+3. [Third step if needed]`;
+
+  } else if(type==="summarise") {
+    system = BEXEL_SYSTEM;
+    prompt = `Summarise this Bexel Manager support ticket in 2 concise sentences. Focus on the root cause and urgency.\n\nClient: ${t.client}\nSubject: ${t.subject}\nCategory: ${t.category}\nPriority: ${t.priority}\nStatus: ${t.status}`;
+
   } else if(type==="reply") {
-    system="You are a professional customer support agent for Bexel Manager. Write polished, empathetic client-facing emails.";
-    prompt=`Draft a professional email reply to the client for this support ticket.\n\nClient: ${t.client}\nIssue: ${t.subject}\nCurrent status: ${t.status}\nSolution/progress: ${t.solution||t.aiSummary||"Under investigation"}\n\nKeep it under 100 words. Be empathetic and clear.`;
+    system = `You are a professional customer support agent for Bexel India, supporting clients who use Bexel Manager BIM software. Write polished, empathetic, professional client-facing emails. Always sign off as "Bexel India Support Team, support@bexelindia.com"`;
+    prompt = `Draft a professional email reply for this support ticket.\n\nClient: ${t.client}\nIssue: ${t.subject}\nStatus: ${t.status}\nProgress: ${t.solution||t.aiSummary||"Under investigation by our team"}\n\nKeep it under 120 words. Be empathetic, clear and professional.`;
   }
 
   const out = document.getElementById("ai-out");
@@ -686,12 +771,22 @@ async function aiAction(type) {
   out.textContent = result;
   out.classList.add("has-content");
 
-  // Auto-save summary back to ticket
   if(type==="summarise") {
     tickets = tickets.map(t2=> t2.id===t.id ? {...t2, aiSummary:result} : t2);
     const el = document.getElementById("ai-summary-text");
     if(el) el.innerHTML = result;
     toast("AI summary saved to ticket");
+  }
+  if(type==="full") {
+    // Extract and save summary from full analysis
+    const summaryMatch = result.match(/🎫 TICKET SUMMARY\n([\s\S]*?)(?=📊|$)/);
+    if(summaryMatch) {
+      const summary = summaryMatch[1].trim();
+      tickets = tickets.map(t2=> t2.id===t.id ? {...t2, aiSummary:summary} : t2);
+      const el = document.getElementById("ai-summary-text");
+      if(el) el.innerHTML = summary;
+    }
+    toast("Full AI analysis complete — Help Centre, YouTube & KB checked ✓");
   }
 }
 
@@ -755,10 +850,4 @@ function renderKB() {
     </div>`).join("")}</div>`;
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// INIT
-// ═══════════════════════════════════════════════════════════════════
-renderDashboard();
-</script>
-</body>
-</html>
+// ══════════════════════════════════
